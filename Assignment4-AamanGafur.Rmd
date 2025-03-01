@@ -1,0 +1,79 @@
+---
+title: "Assignment4 - Aaman Gafur"
+author: "Aaman Gafur"
+date: "2025-03-01"
+output: html_document
+---
+
+```{r}
+library(TTR)
+library(forecast)
+
+data <- read.csv("/Users/aamangafur/Downloads/Natural_Gas_Consumptions.csv", header = TRUE)
+head(data)
+data <- data[, -1]
+data$Date <- as.Date(paste(data$Years, data$Months, "1", sep = "-"), format = "%Y-%m-%d")
+
+
+timeSeries <- ts(data$Amounts_.m3., start = c(min(data$Years)), frequency = 12)
+plot(timeSeries)
+acf(timeSeries)
+
+decomp <- stl(timeSeries, s.window = "periodic")
+plot(decomp)
+
+#using mean forecast
+# This model takes the average of all past values and assumes gas consumption will stay the same moving forward. This doesn’t work well for my data because gas usage changes a lot depending on the season.
+
+mean_forecast <- meanf(timeSeries, 12)
+
+#naive
+#The naive model that whatever happened last month will keep happening in the future. Since my data has seasonal charcateristics, this model struggles. For example, if the last recorded value was during peak winter, it would incorrectly predict the same high usage for the summer months.
+
+naiveForecast <- naive(timeSeries, h = 12)
+
+#seasonal naive
+#The seasonal naive model works betetr for my data because it repeats the value from the same month in previous years, capturing the natural gas consumption pattern over time. This model aligns with the seasonal cycles in my data, making it one of the stonger and more accurate options.
+
+seasNaive <- snaive(timeSeries, h = 12)
+
+#random walk
+#Thos model has a "built in trend", meaning it can account for gradual increases or decreases over time. The problem is, my data is seasonal, so while it might do slightly better than the naive method, it still won’t be fully accurate.
+
+rwf_forecast <- rwf(timeSeries,12)
+
+#Holt-Wonters
+#This model is built specifically for time series with both trends and seasonality, which makes it a great fit for my dataset. Since the data follows a seasonal cycle, this model should be very very accurate, especially if the gamma value confirms seasonality is a key factor.
+
+holtsFC <- HoltWinters(timeSeries)
+
+#moving average
+#The moving average model smooths out the data by averaging past values over a period, making it easier to spot trends. However, it doesn’t actually generate future forecasts, and is more for cleaning up the data.
+
+movingAverageForecase <- ma(timeSeries, order = 5)
+
+#ets decomp
+#This model tries to balance past trends and seasonal effects by giving different weights to older and newer data.
+etsDec <- ets(timeSeries)
+
+
+plot(mean_forecast)
+lines(naiveForecast$mean, col = "red")       
+lines(seasNaive$mean, col = "black")        
+lines(rwf_forecast$mean, col = "green")     
+lines(holtsFC$fitted[,1], col = "orange")    
+lines(movingAverageForecase, col = "pink")   
+lines(etsDec$fitted, col = "purple")         
+attributes(naiveForecast)
+
+accuracy(mean_forecast)
+accuracy(naiveForecast)
+accuracy(seasNaive)
+accuracy(rwf_forecast)
+holts_forecast <- forecast(holtsFC, h = 12)
+accuracy(holts_forecast)
+accuracy(etsDec)
+
+#Based on the accuracy comparisons, the most accurate model is the ETS model because it has the lowest MAPE and RMSE values.
+
+```
